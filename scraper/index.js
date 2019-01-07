@@ -129,7 +129,6 @@ function sqlInsertCurrencyItem (League,item,stash,itemId,priceForOne,listedFor){
               const ListedForId = result[0].RelatesTo
               con.query("INSERT INTO CurrencyItems (ItemId,StashId,CurrencyId,LeagueId,Price,ListedForId) VALUES ('"+itemId+"','"+stash+"','"+CurrencyId+"','"+LeagueId+"','"+priceForOne+"','"+ListedForId+"')", function (err, result,) 
               {
-                if(err) throw err
                 console.log("Added:"+item+"\n listed for:"+listedFor+"\n in league:"+League+"\n price:"+priceForOne)
                 currentitemchecks=currentitemchecks-1
               });
