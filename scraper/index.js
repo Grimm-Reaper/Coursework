@@ -47,7 +47,7 @@ function scrape(nextId){
                   {
                     price = splitNote[1]/item.stackSize
                   }
-                  sqlInsertCurrencyItem(item.league,item.typeLine,stash.id,item.id,price,splitNote[2])
+                  testLeague(item.league,item.typeLine,stash.id,item.id,price,splitNote[2])
                 }
             }   
           }          
@@ -68,7 +68,7 @@ function saveLastIdAndScrape(lastId,nextId)
 }
 function testifshouldwait (nextId)
 {
-  if(currentitemchecks>10)
+  if(currentitemchecks>100)
   {
   waitonitemchecks(nextId)
   }
@@ -89,64 +89,72 @@ function waitonitemchecks(nextId)
     scrape(nextId)
   }
 }
-function sqlInsertCurrencyItem (League,item,stash,itemId,priceForOne,listedFor){
-  if((listedFor!==undefined)&(League!==undefined))
+function testLeague (League,item,stash,itemId,priceForOne,listedFor)
+{  
+  if((listedFor!==undefined)&(League!==undefined)&(priceForOne>0))
   {
-  currentitemchecks++
-  console.log(currentitemchecks)
-  item = item.replace("'","''")
-  listedFor = listedFor.replace("'","''")
-  con.query("SELECT LeagueId FROM LeagueIds WHERE LeagueName ='"+League+"'", function (err, result,) 
-  {
-    if(err)
+    if(!/\(PL\d+\)/.test(League))
     {
-      throw err;
-    }
-    else if(result[0]==undefined){
-      con.query("INSERT INTO LeagueIds (LeagueName) VALUES ('"+League+"')", function (err, result,) 
+    currentitemchecks++
+    console.log(currentitemchecks)
+    item = item.replace("'","''")
+    listedFor = listedFor.replace("'","''")
+    con.query("SELECT LeagueId FROM LeagueIds WHERE LeagueName ='"+League+"'", function (err, result,) 
+    {
+      if(err)
       {
-        if(err) throw err;
-        console.log("league added")
-        sqlInsertCurrencyItem(League,item,stash,itemId,priceForOne,listedFor)
-        currentitemchecks=currentitemchecks-1
-      });
+        throw err;
+      }
+      else if(result[0]==undefined){
+        con.query("INSERT INTO LeagueIds (LeagueName) VALUES ('"+League+"')", function (err, result,) 
+        {
+          if(err) throw err;
+          console.log("league added")
+          testLeague(League,item,stash,itemId,priceForOne,listedFor)
+          currentitemchecks=currentitemchecks-1
+        });
+      }
+      else
+      { 
+        JSON.stringify(result[0])
+        const LeagueId = result[0].LeagueId
+        addItem (LeagueId,item,stash,itemId,priceForOne,listedFor)
+      } 
+    });
     }
-    else
-    { 
+  }
+}
+function addItem (LeagueId,item,stash,itemId,priceForOne,listedFor)
+{
+  con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+item+"'", function (err, result) {
+    if (err) throw err;
+    if(result[0]!==undefined)
+    {
       JSON.stringify(result[0])
-      const LeagueId = result[0].LeagueId
-      con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+item+"'", function (err, result) {
+      const CurrencyId = result[0].RelatesTo
+      con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+listedFor+"'", function (err, result) {
         if (err) throw err;
         if(result[0]!==undefined)
         {
           JSON.stringify(result[0])
-          const CurrencyId = result[0].RelatesTo
-          con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+listedFor+"'", function (err, result) {
-            if (err) throw err;
-            if(result[0]!==undefined)
-            {
-              JSON.stringify(result[0])
-              const ListedForId = result[0].RelatesTo
-              con.query("INSERT INTO CurrencyItems (ItemId,StashId,CurrencyId,LeagueId,Price,ListedForId) VALUES ('"+itemId+"','"+stash+"','"+CurrencyId+"','"+LeagueId+"','"+priceForOne+"','"+ListedForId+"')", function (err, result,) 
-              {
-                console.log("Added:"+item+"\n listed for:"+listedFor+"\n in league:"+League+"\n price:"+priceForOne)
-                currentitemchecks=currentitemchecks-1
-              });
-            }
-            else
-            {
-              console.log("failed to find end currnecy in id table:"+item+"\n listed for:"+listedFor+"\n in league:"+League+"\n price:"+priceForOne)
-              currentitemchecks=currentitemchecks-1
-            }
+          const ListedForId = result[0].RelatesTo
+          con.query("INSERT INTO CurrencyItems (ItemId,StashId,CurrencyId,LeagueId,Price,ListedForId) VALUES ('"+itemId+"','"+stash+"','"+CurrencyId+"','"+LeagueId+"','"+priceForOne+"','"+ListedForId+"')", function (err, result,) 
+          {
+            console.log("Added:"+item+"\n listed for:"+listedFor+"\n in league:"+LeagueId+"\n price:"+priceForOne)
+            currentitemchecks=currentitemchecks-1
           });
         }
         else
         {
-          console.log("failed to find start currency in id table:"+item+"\n listed for:"+listedFor+"\n in league:"+League+"\n price:"+priceForOne)
+          console.log("failed to find end currnecy in id table:"+item+"\n listed for:"+listedFor+"\n in league:"+LeagueId+"\n price:"+priceForOne)
           currentitemchecks=currentitemchecks-1
         }
       });
-    } 
+    }
+    else
+    {
+      console.log("failed to find start currency in id table:"+item+"\n listed for:"+listedFor+"\n in league:"+LeagueId+"\n price:"+priceForOne)
+      currentitemchecks=currentitemchecks-1
+    }
   });
-}
 }
