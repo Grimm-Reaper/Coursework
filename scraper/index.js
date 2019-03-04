@@ -6,6 +6,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const  mysql = require('mysql');
 const IsAPrice = new RegExp('^~')
 const fractionFormatTest = /\s\d*\/\d*\s/
+const accecptableCharactersRegex = /[A-Za-z0-9]+/
 const con = mysql.createConnection({
   host: "104.199.107.101",
   user: "Scraper",
@@ -104,6 +105,8 @@ function waitonitemchecks(nextId)
 }
 function testLeague (League,item,stash,itemId,priceForOne,listedFor)
 {
+  if(accecptableCharactersRegex.test(listedFor))
+  {
   if((listedFor!==undefined)&(League!==undefined)&(priceForOne>0))
   {
     if(!/\(PL\d+\)/.test(League))
@@ -138,18 +141,27 @@ function testLeague (League,item,stash,itemId,priceForOne,listedFor)
     }
   }
 }
+}
 function addItem (LeagueId,item,stash,itemId,priceForOne,listedFor)
 {
   console.log("item recieved in add function")
   con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+item+"'", function (err, result) {
-    if (err) throw err;
-    if(result[0]!==undefined)
+    if (err) 
+    {
+      console.log(item+listedFor+LeagueId+stash+itemId+priceForOne)
+      throw err;
+    }
+      if(result[0]!==undefined)
     {
       JSON.stringify(result[0])
       const CurrencyId = result[0].RelatesTo
       console.log("Start Currency found for item \n "+"start currnecy"+":"+item+"-->"+CurrencyId+"\n listed for:"+listedFor+"\n in league:"+LeagueId+"\n price:"+priceForOne)
       con.query("SELECT RelatesTo FROM CurrencyIds WHERE TextName='"+listedFor+"'", function (err, result) {
-        if (err) throw err;
+        if (err) 
+        {
+          console.log(item+listedFor+LeagueId+stash+itemId+priceForOne)
+          throw err;
+        }
         if(result[0]!==undefined)
         {
           JSON.stringify(result[0])
