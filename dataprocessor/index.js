@@ -1,17 +1,44 @@
+const intervalBetweenCollections = 21600000
 const  mysql = require('mysql');
 const con = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "pass",
-    database : 'PathTool',
+    host: "104.199.107.101",
+    user: "DataProccesor",
+    password: "sKeYXfn3ra8HBDQ",
+    database : 'path_tool_database',
   });
+setInterval(processdata,intervalBetweenCollections)
+function LeagueCleanup ()
+{
+//get all leagues in and array
+con.query("SELECT LeagueId, LeagueName FROM LeagueIds WHERE Depricated = false ORDER BY LeagueId ASC", function (err, result,) 
+{
+  if(err) throw err;
+  JSON.stringify(result)
+  result.forEach(leagueOne => {
+    let leagueOneName = leagueOne.LeagueName
+    result.forEach(leagueTwo => {
+        let leagueTwoName = leagueTwo.LeagueName
+        if((leagueOneName == leagueTwoName)&(leagueOne.LeagueId!=leagueTwo.LeagueId))
+        {
+            console.log("Match found\n "+leagueOneName+":"+leagueOne.LeagueId+" - "+leagueTwoName+":"+leagueTwo.LeagueId )
+        }
+    });
+  });
+});
+}
+//check for duplicates
 
-  con.query("SELECT LeagueId FROM LeagueIds WHERE Depricated = false ", function (err, result,) 
+//remove the duplicate league from the ids table
+processdata()
+function processdata(){
+  console.log("dataProcessing has begun")
+  con.query("SELECT LeagueId,LeagueName FROM LeagueIds WHERE Depricated = false ", function (err, result,) 
   {
     if(err) throw err;
     JSON.stringify(result)
-    result.forEach(LeagueId => {
-        LeagueId = LeagueId.LeagueId
+    result.forEach(League => {
+        const LeagueId = League.LeagueId
+        const LeagueName = League.LeagueName
         con.query("SELECT * FROM CurrencyItems WHERE LeagueId ='"+LeagueId+"' ORDER BY Price ASC LIMIT 1", function (err, result,) 
         {
           if(err) throw err;
@@ -24,15 +51,19 @@ const con = mysql.createConnection({
           }
           else
           {
-            con.query("SELECT DISTINCT RelatesTo FROM CurrencyIds", function (err, result,) 
+            console.log("Processing data for league:"+LeagueName)
+            con.query("SELECT RelatesTo,TextName FROM CurrencyIds WHERE RelatesTo = CurrencyId", function (err, result,) 
             {
               if(err) throw err;
               JSON.stringify(result)
-              result.forEach(StartCurrencyId => {
-                  StartCurrencyId = StartCurrencyId.RelatesTo
-                  result.forEach(EndCurrencyId => {
-                    EndCurrencyId = EndCurrencyId.RelatesTo
-                    WhereLeagueStartEnd = "LeagueId = '"+LeagueId+"'AND CurrencyId ='"+StartCurrencyId+"'AND ListedForId='"+EndCurrencyId+"'"
+              result.forEach(StartCurrency => {
+                  const StartCurrencyId = StartCurrency.RelatesTo
+                  const StartCurrencyName = StartCurrency.TextName
+                  result.forEach(EndCurrency => {
+                    const EndCurrencyId = EndCurrency.RelatesTo
+                    const EndCurrencyName = EndCurrency.TextName
+                    console.log("Processing data in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
+                    const WhereLeagueStartEnd = "LeagueId = '"+LeagueId+"'AND CurrencyId ='"+StartCurrencyId+"'AND ListedForId='"+EndCurrencyId+"'"
                     con.query("SELECT Price FROM CurrencyItems WHERE "+WhereLeagueStartEnd+"ORDER BY Price ASC", function (err, result,) 
                     {
                       if(err) throw err;
@@ -40,7 +71,7 @@ const con = mysql.createConnection({
                       const length = result.length
                       if(length>0)
                       {
-                          resultsFound = true
+                          //resultsFound = true
                           let median
                           let medianrank
                           let FirstQuartile
@@ -84,6 +115,7 @@ const con = mysql.createConnection({
                             let min = result[0].Price
                             let max = result[result.length-1].Price
                             let runningTotal = 0
+                            let SampleSize = result.length
                             result.forEach(current => {
                                runningTotal = runningTotal + current.Price
                             });
@@ -123,11 +155,29 @@ const con = mysql.createConnection({
                                  let conversionRate = runningTotal/result.length
                                  let DateTime = new Date(Date.now())
                                  DateTime = DateTime.toISOString().replace("T"," ").replace("Z","")
-                                 con.query("INSERT INTO CurrencyMetadata (StartCurrencyId,EndCurrencyId,LeagueId,SampleAt,FirstQuartile,Median,ThirdQuartile,Min,Max,Mean,Mode,StandardDeviation,ConversionRate, SampleSize) VALUES ('"+StartCurrencyId+"','"+EndCurrencyId+"','"+LeagueId+"','"+DateTime+"','"+FirstQuartile+"','"+median+"','"+ThirdQuartile+"','"+min+"','"+max+"','"+mean+"','"+mode+"','"+standardDeviation+"','"+conversionRate+"','"+result.length+"')" , function (err, result,) 
+                                 con.query("INSERT INTO CurrencyMetadata (StartCurrencyId,EndCurrencyId,LeagueId,SampleAt,FirstQuartile,Median,ThirdQuartile,Min,Max,Mean,Mode,StandardDeviation,ConversionRate, SampleSize) VALUES ('"+StartCurrencyId+"','"+EndCurrencyId+"','"+LeagueId+"','"+DateTime+"','"+FirstQuartile+"','"+median+"','"+ThirdQuartile+"','"+min+"','"+max+"','"+mean+"','"+mode+"','"+standardDeviation+"','"+conversionRate+"','"+SampleSize+"')" , function (err, result,) 
                                  {
-                                     console.log("metadata added")
+                                     if(err){
+                                        JSON.stringify(err)
+                                        if(err.errno==1265)//ignoring this error as it is expected and does not impact the functionality of the program
+                                        {
+                                            console.log("Metadata added in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
+                                        }
+                                        else
+                                        {
+                                         console.log(err)
+                                        }
+                                     }
+                                     else
+                                     {
+                                     console.log("Metadata added in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
+                                     }                                        
                                  });
                              });
+                            }
+                            else
+                            {
+                                console.log("No metadata added due to lack of data in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
                             }
                           });
                       }
@@ -139,3 +189,4 @@ const con = mysql.createConnection({
         });   
     });
   });
+}
