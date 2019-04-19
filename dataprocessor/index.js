@@ -7,29 +7,7 @@ const con = mysql.createConnection({
     database : 'path_tool_database',
   });
 setInterval(processdata,intervalBetweenCollections)
-function LeagueCleanup ()
-{
-//get all leagues in and array
-con.query("SELECT LeagueId, LeagueName FROM LeagueIds WHERE Depricated = false ORDER BY LeagueId ASC", function (err, result,) 
-{
-  if(err) throw err;
-  JSON.stringify(result)
-  result.forEach(leagueOne => {
-    let leagueOneName = leagueOne.LeagueName
-    result.forEach(leagueTwo => {
-        let leagueTwoName = leagueTwo.LeagueName
-        if((leagueOneName == leagueTwoName)&(leagueOne.LeagueId!=leagueTwo.LeagueId))
-        {
-            console.log("Match found\n "+leagueOneName+":"+leagueOne.LeagueId+" - "+leagueTwoName+":"+leagueTwo.LeagueId )
-        }
-    });
-  });
-});
-}
-//check for duplicates
 
-//remove the duplicate league from the ids table
-processdata()
 function processdata(){
   console.log("dataProcessing has begun")
   con.query("SELECT LeagueId,LeagueName FROM LeagueIds WHERE Depricated = false ", function (err, result,) 
