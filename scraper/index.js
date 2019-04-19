@@ -15,13 +15,14 @@ const con = mysql.createConnection({
   user: "Scraper",
   password: "QLHYnN9X3wMvc5t",
   database : 'poe_tools_db',
-});
+});//the database connection
 con.connect(function(err) {
   if (err) throw err;
   console.log("Connected!");
-});
-statup()
-function statup(){
+});//connecting to the database
+statup()//calling the start function
+function statup()//start function uses an sql querry to find where the program left of and the calls the function getApiData with the last changeId the program checked
+{
   con.query("SELECT id FROM lastId WHERE pkey = '1'", function (err, result,) 
   {
   if(err) throw err;
@@ -31,38 +32,39 @@ function statup(){
   });
 }
 
-function getApiData(nextChangeId)
+function getApiData(nextChangeId,)
 {
   console.log("Getting data from api for:"+nextChangeId)
   axios.get('http://www.pathofexile.com/api/public-stash-tabs?id='+nextChangeId)
   .then(function (response) {
-    response.data.stashes.forEach(stash => {
-      stash.items.forEach(item => {
+    response.data.stashes.forEach(stash => {//a foreach loop that go though each stash in the api's response
+      stash.items.forEach(item => {//a foreach loop that loops though each item in the stash
         testItem(item)
       });
     });
-    con.query("UPDATE lastId SET id = '"+nextChangeId+"' WHERE pkey = '1'", function (err, result) {
-      if (err) throw err;
+    con.query("UPDATE lastId SET id = '"+nextChangeId+"' WHERE pkey = '1'", function (err, result) 
+    {
+      if (err) throw err;//this querry updates the start point for the program in the database so that is the program is restarted it starts in the same place
     });
-    sleep(250).then(() => testBacklog(response.data.next_change_id))
+    sleep(500).then(() => testBacklog(response.data.next_change_id))//waits a small amount of time before callingiself to make the next request otherwise the api locks my program out
   }).catch(function (error) 
   {
     console.log("there was an error scraping the api:"+error)
-    sleep(1000).then(() => getApiData(nextChangeId))
+    sleep(1000).then(() => getApiData(nextChangeId))//waits longer before recalling the getApiData function with the same id because there was and error and it is likely that the progam was calling to often
   })
 }
-function testItem(targetItem){
+function testItem(targetItem){//this function test wether the item that is sent into it is an item that the program is inserested in ie a currency item
   if(targetItem.frameType==5)
   {
-    if(isAPrice.test(targetItem.note))
+    if(isAPrice.test(targetItem.note))//tests wether the item has a price attached to in the notes section using regex
     {
-      if(!(nonEnglishOnlynote.test(targetItem.note)))
+      if(!(nonEnglishOnlynote.test(targetItem.note)))//tests all the charaters in the are english using regex
       {
-        if(!(leagueTest.test(targetItem.league)))
+        if(!(leagueTest.test(targetItem.league)))//tests the item is in a main league or a private one using regex
         {
           let price = 0
           let noteSplitSpaces = (targetItem.note).split(" ")
-          if(fractionFormatTest.test(targetItem.note))
+          if(fractionFormatTest.test(targetItem.note))// tests if the price in the notes field is in the form of a fraction and then deals with it correctly
           {
             let priceParts = noteSplitSpaces[1].split("/")
             price = priceParts[0]/priceParts[1]
