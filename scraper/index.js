@@ -2,8 +2,8 @@ const axios = require('axios')//used for the axios code libary to simplify makin
 const  mysql = require('mysql');//used for the mysql code libary to allow for sql querries to be made
 let currentLeagueTests = 0 //the current number of leagues that are being tested
 let currentItemInserts = 0 //the current number of items that are being inserted
-const maxLeagueChecks = 10 //the maximum items that can be tested at once
-const maxItemInserts = 20 //the maximum number of item inserts that can occur at once
+const maxLeagueChecks = 100 //the maximum items that can be tested at once
+const maxItemInserts = 100 //the maximum number of item inserts that can occur at once
 const sleeptimeWhileWaiting = 666 //how long the program waits before checking how many item checks are happening if the max number of checks is exceeded
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));//a promise to wait for after the timeout has passed before calling the next function
 const isAPrice = /^~/ //used to check if an items note when scraped off of the api is in the format that is used for prices
