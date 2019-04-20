@@ -1,170 +1,122 @@
-const intervalBetweenCollections = 21600000
-const  mysql = require('mysql');
+const intervalBetweenCollections = 3600000// 1 hour in milliseconds
+const mysql = require('mysql');//allows the program to use the mysql modual for node.js
 const con = mysql.createConnection({
     host: "104.199.107.101",
     user: "DataProccesor",
     password: "sKeYXfn3ra8HBDQ",
-    database : 'path_tool_database',
-  });
-setInterval(processdata,intervalBetweenCollections)
+    database: 'poe_tools_db',
+});
 
-function processdata(){
-  console.log("dataProcessing has begun")
-  con.query("SELECT LeagueId,LeagueName FROM LeagueIds WHERE Depricated = false ", function (err, result,) 
-  {
-    if(err) throw err;
-    JSON.stringify(result)
-    result.forEach(League => {
-        const LeagueId = League.LeagueId
-        const LeagueName = League.LeagueName
-        con.query("SELECT * FROM CurrencyItems WHERE LeagueId ='"+LeagueId+"' ORDER BY Price ASC LIMIT 1", function (err, result,) 
-        {
-          if(err) throw err;
-          if(result==undefined)
-          {
-            con.query("UPDATE LeagueIds SET Depricated = true' WHERE LeagueId = '"+LeagueId+"'", function (err, result,) 
-            {
-              if(err) throw err;
-            });
-          }
-          else
-          {
-            console.log("Processing data for league:"+LeagueName)
-            con.query("SELECT RelatesTo,TextName FROM CurrencyIds WHERE RelatesTo = CurrencyId", function (err, result,) 
-            {
-              if(err) throw err;
-              JSON.stringify(result)
-              result.forEach(StartCurrency => {
-                  const StartCurrencyId = StartCurrency.RelatesTo
-                  const StartCurrencyName = StartCurrency.TextName
-                  result.forEach(EndCurrency => {
-                    const EndCurrencyId = EndCurrency.RelatesTo
-                    const EndCurrencyName = EndCurrency.TextName
-                    console.log("Processing data in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
-                    const WhereLeagueStartEnd = "LeagueId = '"+LeagueId+"'AND CurrencyId ='"+StartCurrencyId+"'AND ListedForId='"+EndCurrencyId+"'"
-                    con.query("SELECT Price FROM CurrencyItems WHERE "+WhereLeagueStartEnd+"ORDER BY Price ASC", function (err, result,) 
-                    {
-                      if(err) throw err;
-                      JSON.stringify(result)
-                      const length = result.length
-                      if(length>0)
-                      {
-                          //resultsFound = true
-                          let median
-                          let medianrank
-                          let FirstQuartile
-                          let ThirdQuartile
-                          if(length%2==1)
-                          {
-                              median = result[((length+1)/2)-1].Price
-                              medianrank = (length+1)/2
-                          }
-                          else if(length%2==0)
-                          {
-                              median = result[(length/2)-1].Price
-                              medianrank = length/2
-                          }
-                          if(medianrank%2==1)
-                          {
-                              FirstQuartile = result[((medianrank+1)/2)-1].Price
-                          }
-                          else if(medianrank%2==0)
-                          {
-                              FirstQuartile = result[(medianrank/2)-1].Price
-                          }
-                          if(medianrank%2==1)
-                          {
-                              ThirdQuartile = result[medianrank+(((medianrank+1)/2))-2].Price
-    
-                          }
-                          else if(medianrank%2==0)
-                          {
-                              ThirdQuartile = result[medianrank+((medianrank/2))-2].Price
-                          }
-                          let iqr = ThirdQuartile - FirstQuartile
-                          let lowerFrence = FirstQuartile - 1.5*iqr
-                          let upperFrence = ThirdQuartile + 1.5*iqr
-                          con.query("SELECT Price FROM CurrencyItems WHERE CurrencyId = '"+StartCurrencyId+"'AND LeagueId = '"+LeagueId+"'AND ListedForId = '"+EndCurrencyId+"' AND Price BETWEEN '"+lowerFrence+"' AND'"+upperFrence+ "' ORDER BY Price ASC", function (err, result,) 
-                          {
-                            if(err) throw err;
-                            JSON.stringify(result)
-                            if(result.length>0)
-                            {
-                            let min = result[0].Price
-                            let max = result[result.length-1].Price
-                            let runningTotal = 0
-                            let SampleSize = result.length
-                            result.forEach(current => {
-                               runningTotal = runningTotal + current.Price
-                            });
-                            let mean = runningTotal/result.length
-                            runningTotal = 0
-                            result.forEach(present => {
-                                runningTotal = runningTotal + (present.Price-mean)*(present.Price-mean)
-                             });
-                            let standardDeviation = runningTotal/result.length
-                            let lastSeen
-                            let count=0
-                            let lastMaxCount=0
-                            let mode
-                            result.forEach(present => {
-                                if(present.Price == lastSeen)
-                                {
-                                    count++
-                                    if(count>lastMaxCount)
-                                    {
-                                        lastMaxCount = count
-                                        mode = present.Price
-                                    }
-                                }
-                                else
-                                {
-                                    count = 0
-                                }
-                                lastSeen = present.Price
-                             });
-                             con.query("SELECT Price FROM CurrencyItems WHERE CurrencyId = '"+StartCurrencyId+"'AND LeagueId = '"+LeagueId+"'AND ListedForId = '"+EndCurrencyId+"' AND Price >= '"+lowerFrence+"' ORDER BY Price ASC LIMIT 30", function (err, result,) 
-                             {
-                                if(err) throw err;
-                                JSON.stringify(result)
-                                result.forEach(current => {
-                                    runningTotal = runningTotal + current.Price
-                                 });
-                                 let conversionRate = runningTotal/result.length
-                                 let DateTime = new Date(Date.now())
-                                 DateTime = DateTime.toISOString().replace("T"," ").replace("Z","")
-                                 con.query("INSERT INTO CurrencyMetadata (StartCurrencyId,EndCurrencyId,LeagueId,SampleAt,FirstQuartile,Median,ThirdQuartile,Min,Max,Mean,Mode,StandardDeviation,ConversionRate, SampleSize) VALUES ('"+StartCurrencyId+"','"+EndCurrencyId+"','"+LeagueId+"','"+DateTime+"','"+FirstQuartile+"','"+median+"','"+ThirdQuartile+"','"+min+"','"+max+"','"+mean+"','"+mode+"','"+standardDeviation+"','"+conversionRate+"','"+SampleSize+"')" , function (err, result,) 
-                                 {
-                                     if(err){
-                                        JSON.stringify(err)
-                                        if(err.errno==1265)//ignoring this error as it is expected and does not impact the functionality of the program
-                                        {
-                                            console.log("Metadata added in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
-                                        }
-                                        else
-                                        {
-                                         console.log(err)
-                                        }
-                                     }
-                                     else
-                                     {
-                                     console.log("Metadata added in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
-                                     }                                        
-                                 });
-                             });
-                            }
-                            else
-                            {
-                                console.log("No metadata added due to lack of data in League:"+LeagueName+"\n For currency:"+StartCurrencyName+"--->"+EndCurrencyName)
-                            }
-                          });
-                      }
+getLeagueAndCurrencyIds()
+setInterval(getLeagueAndCurrencyIds, intervalBetweenCollections)
+
+function getLeagueAndCurrencyIds() {
+    deleteStaleMarketData()
+    console.log("dataProcessing has begun")
+    con.query("SELECT leagueId,leagueName FROM leagueIds", function (err, result, ) {
+        if (err) throw err;
+        JSON.stringify(result)
+        result.forEach(league => {
+            const leagueId = league.leagueId
+            const leagueName = league.leagueName
+            console.log("Processing data for league:" + leagueName)
+            con.query("SELECT currencyIdRelatesTo,currencyTextName FROM currencyIds WHERE currencyIdRelatesTo = CurrencyId", function (err, result, ) {
+                if (err) throw err;
+                JSON.stringify(result)
+                result.forEach(startCurrency => {
+                    const startCurrencyId = startCurrency.currencyIdRelatesTo
+                    const startCurrencyName = startCurrency.currencyTextName
+                    result.forEach(endCurrency => {
+                        const endCurrencyName = endCurrency.currencyTextName
+                        const endCurrencyId = endCurrency.currencyIdRelatesTo
+                        generateStatistics(leagueId, startCurrencyId, endCurrencyId, leagueName, startCurrencyName, endCurrencyName)
                     });
                 });
-              });
             });
-          }
-        });   
+        });
     });
-  });
+}
+function generateStatistics(leagueId, startCurrencyId, endCurrencyId, leagueName, startCurrencyName, endCurrencyName) {
+    con.query("SELECT price FROM marketItems WHERE  startingCurrency = '" + startCurrencyId + "' AND endCurrency = '" + endCurrencyId + "' AND leagueId = '" + leagueId + "' AND time >= '" + dateTimeDisplacement(-1) + "' ORDER BY price ASC", function (err, result, ) {
+        if (err) throw err;
+        if (result.length > 5) {
+            let median
+            let medianNo
+            let mean
+            let max
+            let min
+            let firstQuart
+            let thirdQuart
+            let iqr
+            let total
+            if (result.length % 2 == 0) {
+                medianNo = result.length / 2
+                median = result[medianNo - 1].price
+            }
+            else {
+                medianNo = (result.length + 1) / 2
+                median = result[medianNo - 1].price
+            }
+            if (medianNo % 2 == 0) {
+                firstQuart = result[medianNo / 2 - 1].price
+                thirdQuart = result[medianNo + medianNo / 2 - 1].price
+            }
+            else {
+                firstQuart = result[(medianNo + 1) / 2 - 1].price
+                thirdQuart = result[medianNo + (medianNo + 1) / 2 - 1].price
+            }
+            iqr = thirdQuart - firstQuart
+            //this query using the median and the iqr to calculate outliers inorder to discount outliers to help safeguard against price fixing by using Between in the Sql
+            con.query("SELECT price FROM marketItems WHERE  startingCurrency = '" + startCurrencyId + "' AND endCurrency = '" + endCurrencyId + "' AND leagueId = '" + leagueId + "' AND time >= '" + dateTimeDisplacement(-1) + "' AND price BETWEEN '" + (median - 1.5 * iqr) + "'AND '" + (median + 1.5 * iqr) + "' ORDER BY price ASC", function (err, result, ) {
+                if (err) throw err
+                if (result.length > 5) {
+                    min = result[0].price
+                    max = result[0].price
+                    total = 0
+                    result.forEach(currentResult => {
+                        currentResultPrice = currentResult.price
+                        if (currentResultPrice < min) {
+                            min = currentResultPrice
+                        }
+                        if (currentResultPrice > max) {
+                            max = currentResultPrice
+                        }
+                        total = total + currentResultPrice
+                    });
+                    mean = total / result.length
+
+                    insertStatistics(median, firstQuart, thirdQuart, min, max, mean, leagueId, startCurrencyId, endCurrencyId, leagueName, startCurrencyName, endCurrencyName)
+                }
+            })
+        }
+    })
+}
+function insertStatistics(median, firstQuart, thirdQuart, min, max, mean, leagueId, startCurrencyId, endCurrencyId, leagueName, startCurrencyName, endCurrencyName) {
+    let currentDateTime = dateTimeDisplacement(0)
+    //sql query to insert the statistics that have been calcutaled into the table
+    con.query("INSERT INTO marketStatistics(median, lowerQuartile, upperQuartile, min, max, mean, leagueId, startingCurrency, endCurrency, time) VALUES ('" + median + "','" + firstQuart + "','" + thirdQuart + "','" + min + "','" + max + "','" + mean + "','" + leagueId + "','" + startCurrencyId + "','" + endCurrencyId + "','" + currentDateTime + "')", function (err, result, ) {
+        if (err) {
+            if ((err.toString()).includes("WARN_DATA_TRUNCATED")) //this error means that data was traunicated and can be ignored as it is expected
+            {
+                console.log("data traunicated")
+            }
+            else if (err) throw err
+        }
+        console.log("Inserted market statisics\n Startcurrency:", startCurrencyName, "\n Endcurrency:", endCurrencyName, "\n League:", leagueName, "data:", median, firstQuart, thirdQuart, min, max, mean, leagueId, startCurrencyId, endCurrencyId)//outputs how many rows have been deleted from the table
+    })
+}
+function deleteStaleMarketData()//deletes data older than 1 hour as it is likely outdated as the people who posted those listings are now offline
+{
+    con.query("DELETE FROM marketItems WHERE TIME<='" + dateTimeDisplacement(-1) + "'", function (err, result, ) //sql query to delete things in the market items table with a time that is more than 1 hour ago
+    {
+        if (err) throw err;
+        console.log("delete " + result.affectedRows + " rows as they where stale and no longer relevent")//outputs how many rows have been deleted from the table
+    })
+}
+function dateTimeDisplacement(displacement)//this function returns the current time in iso format but with the displace that is passed into the function added to it
+{
+    let dateTime = new Date(Date.now())//gets the current time
+    dateTime.setHours(dateTime.getHours() + displacement)//takes displacement away from the current time
+    dateTime = dateTime.toISOString().replace("T", " ").replace("Z", "")//takes the currency iso format time and makes it match the time format sql uses
+    return dateTime
 }

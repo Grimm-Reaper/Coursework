@@ -43,7 +43,7 @@ function getApiData(nextChangeId, ) {
       con.query("UPDATE lastId SET id = '" + nextChangeId + "' WHERE pkey = '1'", function (err, result) {
         if (err) throw err;//this querry updates the start point for the program in the database so that is the program is restarted it starts in the same place
       });
-      sleep(25).then(() => testBacklog(response.data.next_change_id))//waits a small amount of time before callingiself to make the next request otherwise the api locks my program out
+      sleep(90).then(() => testBacklog(response.data.next_change_id))//waits a small amount of time before callingiself to make the next request otherwise the api locks my program out
     }).catch(function (error) {
       console.log("there was an error scraping the api:" + error)
       sleep(1000).then(() => getApiData(nextChangeId))//waits longer before recalling the getApiData function with the same id because there was and error and it is likely that the progam was calling to often
