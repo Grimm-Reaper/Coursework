@@ -1,5 +1,5 @@
-const axios = require('axios')
-const  mysql = require('mysql');
+const axios = require('axios')//used for the axios code libary to simplify making http requests
+const  mysql = require('mysql');//used for the mysql code libary to allow for sql querries to be made
 let currentLeagueTests = 0 //the current number of leagues that are being tested
 let currentItemInserts = 0 //the current number of items that are being inserted
 const maxLeagueChecks = 10 //the maximum items that can be tested at once
@@ -64,6 +64,8 @@ function testItem(targetItem){//this function test wether the item that is sent 
         {
           let price = 0
           let noteSplitSpaces = (targetItem.note).split(" ")
+          if(noteSplitSpaces.length==3)
+          {
           if(fractionFormatTest.test(targetItem.note))// tests if the price in the notes field is in the form of a fraction and then deals with it correctly
           {
             let priceParts = noteSplitSpaces[1].split("/")
@@ -71,9 +73,10 @@ function testItem(targetItem){//this function test wether the item that is sent 
           }
           else
           {
-            price = noteSplitSpaces[1]/targetItem.stackSize
+            price = noteSplitSpaces[1]/targetItem.stackSize//if the price is not as a fraction divides the number by the stacksize
           } 
-          insertItemIntoDb(targetItem.league,targetItem.typeLine.replace(/'/g,"''"),noteSplitSpaces[2].replace(/'/g,"''"),price)
+          insertItemIntoDb(targetItem.league,targetItem.typeLine.replace(/'/g,"''"),noteSplitSpaces[2].replace(/'/g,"''"),price)//feeds parameters into inserts items function but replaces any ' with '' to escape them in the sql later
+          }
         }
       }
     }
@@ -81,22 +84,22 @@ function testItem(targetItem){//this function test wether the item that is sent 
 }
 function insertItemIntoDb(league,startItem,targetItem,price)
 {
-  currentLeagueTests++
-  con.query("SELECT leagueId FROM leagueIds WHERE LeagueName ='"+league+"'", function (err, result,) 
+  currentLeagueTests++//increases the current league tests global varible
+  con.query("SELECT leagueId FROM leagueIds WHERE LeagueName ='"+league+"'", function (err, result,) //sends an sql querry with the text name of the league to get the id
   {
     if(err) throw err;
-    currentLeagueTests=currentLeagueTests-1
+    currentLeagueTests=currentLeagueTests-1//once the querry is complete the current league tests global is reduced again
     JSON.stringify(result)
-    let leagueId = result[0].leagueId
-    if(leagueId!=undefined)
+    let leagueId = result[0].leagueId//sets league id equal to the result of the sql request
+    if(leagueId!=undefined)//check leagueId is set to a value rather than left undefined
     {
-      currentItemInserts++
+      currentItemInserts++//increases the current item inserts
       con.query("SELECT currencyIdRelatesTo FROM  currencyIds WHERE currencyTextName ='"+startItem+"'", function (err, result,) 
       {
         if(err) throw err;
-        if(result[0]==undefined)
+        if(result[0]==undefined)//if this if is triggered that means the currency is not in the currency id database and therefore this item has failed the test
         {
-          currentItemInserts = currentItemInserts -1
+          currentItemInserts = currentItemInserts -1//as the item had no currency id associated with it the insert chain is broken and therefoe currentiteminserts need to be reduced by 1
           console.log("failed to find start currnecy in id table:\n startCurrnecy:"+startItem+"\n targetCurrency:"+targetItem+"\n in league:"+league+"\n price:"+price)
         }
         else
@@ -105,22 +108,22 @@ function insertItemIntoDb(league,startItem,targetItem,price)
           con.query("SELECT currencyIdRelatesTo FROM  currencyIds WHERE currencyTextName ='"+targetItem+"'", function (err, result,) 
           {
             if(err) throw err;
-            if(result[0]==undefined)
+            if(result[0]==undefined)//if this if is trigger the target item had no currency id to match it and therefore the item is not inserted
             {
-              currentItemInserts = currentItemInserts -1
+              currentItemInserts = currentItemInserts -1//as the item had no currency id associated with it the insert chain is broken and therefoe currentiteminserts need to be reduced by 1
               console.log("failed to find start currnecy in id table:\n startCurrnecy:"+targetItem+"\n targetCurrency:"+targetItem+"\n in league:"+league+"\n price:"+price)
             }
             else
             {
               let targetItemId = result[0].currencyIdRelatesTo
-              let DateTime = new Date(Date.now())
-              DateTime = DateTime.toISOString().replace("T"," ").replace("Z","")
+              let DateTime = new Date(Date.now())//gets the current time
+              DateTime = DateTime.toISOString().replace("T"," ").replace("Z","")//takes the currency iso format time and makes it match the time format sql uses
               con.query("INSERT INTO marketItems (time, price, startingCurrency, endCurrency, leagueId) VALUES ('"+DateTime+"','"+price+"','"+startItemId+"','"+targetItemId+"','"+leagueId+"')", function (err, result,) 
               {
                 if (err) throw err
                 console.log("inserted item into table:\n startCurrnecy:"+startItem+"\n targetCurrency:"+targetItem+"\n in league:"+league+"\n price:"+price)
 
-                currentItemInserts=currentItemInserts-1
+                currentItemInserts=currentItemInserts-1//if an item reaches this stage it has been succsesfully added to the database and therefore the current item inserts can be reduced
               });
             } 
          })
@@ -131,16 +134,16 @@ function insertItemIntoDb(league,startItem,targetItem,price)
 }
 function testBacklog (nextId)
 {
-  if((currentItemInserts>maxItemInserts)|(currentLeagueTests>maxLeagueChecks))
+  if((currentItemInserts>maxItemInserts)|(currentLeagueTests>maxLeagueChecks))//checks if either the max item check or the max league checks have been exceeded (both of these are defined in the constants at the start of the code)
   {
-  waitForBacklog(nextId)
+  waitForBacklog(nextId)//if the limits have been exceeded the function wait for backlog is called
   }
   else
   {
-    getApiData(nextId)
+    getApiData(nextId)//if the limits have not been exceeded the function wait for backlog is not called and getapidata is called with the next change id to be checked
   }
 }
-function waitForBacklog(nextId)
+function waitForBacklog(nextId)//waits until both the current league and item tests are 0 the prodceeds gathering data
 {
   if(currentLeagueTests>0)
   {
