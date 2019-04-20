@@ -120,7 +120,11 @@ function insertItemIntoDb(league,startItem,targetItem,price)
               DateTime = DateTime.toISOString().replace("T"," ").replace("Z","")//takes the currency iso format time and makes it match the time format sql uses
               con.query("INSERT INTO marketItems (time, price, startingCurrency, endCurrency, leagueId) VALUES ('"+DateTime+"','"+price+"','"+startItemId+"','"+targetItemId+"','"+leagueId+"')", function (err, result,) 
               {
-                if (err) throw err
+                if (err=="Error: WARN_DATA_TRUNCATED: Data truncated for column 'price' at row 1") //this error means that data was traunicated and can be ignored as it is expected
+                {
+                console.log("data traunicated")
+                }
+                else if(err) throw err
                 console.log("inserted item into table:\n startCurrnecy:"+startItem+"\n targetCurrency:"+targetItem+"\n in league:"+league+"\n price:"+price)
 
                 currentItemInserts=currentItemInserts-1//if an item reaches this stage it has been succsesfully added to the database and therefore the current item inserts can be reduced
@@ -156,6 +160,6 @@ function waitForBacklog(nextId)//waits until both the current league and item te
   }
   else
   {
-    getApiData(nextId)
+    getApiData(nextId)//if the backlog is cleared this function calls getApiData so the program can continue
   }
 }
