@@ -90,9 +90,9 @@ function insertItemIntoDb(league,startItem,targetItem,price)
     if(err) throw err;
     currentLeagueTests=currentLeagueTests-1//once the querry is complete the current league tests global is reduced again
     JSON.stringify(result)
-    let leagueId = result[0].leagueId//sets league id equal to the result of the sql request
-    if(leagueId!=undefined)//check leagueId is set to a value rather than left undefined
+    if(result[0]!=undefined)//check leagueId is set to a value rather than left undefined
     {
+      let leagueId = result[0].leagueId//sets league id equal to the result of the sql request
       currentItemInserts++//increases the current item inserts
       con.query("SELECT currencyIdRelatesTo FROM  currencyIds WHERE currencyTextName ='"+startItem+"'", function (err, result,) 
       {
