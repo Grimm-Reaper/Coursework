@@ -46,7 +46,7 @@ function getApiData(nextChangeId,)
     {
       if (err) throw err;//this querry updates the start point for the program in the database so that is the program is restarted it starts in the same place
     });
-    sleep(500).then(() => testBacklog(response.data.next_change_id))//waits a small amount of time before callingiself to make the next request otherwise the api locks my program out
+    sleep(25).then(() => testBacklog(response.data.next_change_id))//waits a small amount of time before callingiself to make the next request otherwise the api locks my program out
   }).catch(function (error) 
   {
     console.log("there was an error scraping the api:"+error)
