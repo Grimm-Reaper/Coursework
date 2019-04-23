@@ -8,8 +8,9 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            //"program": "${workspaceFolder}/api/server.js"
-            "program": "${workspaceFolder}/scraper/index.js"
+            "program": "${workspaceFolder}/api/server.js"
+            //"program": "${workspaceFolder}/dataprocessor/index.js"
+            //"program": "${workspaceFolder}/scraper/index.js"
         }
     ]
 }

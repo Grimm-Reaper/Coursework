@@ -33,7 +33,7 @@ function statup()//start function uses an sql querry to find where the program l
 
 function getApiData(nextChangeId, ) {
   console.log("Getting data from api for:" + nextChangeId)
-  axios.get('http://www.pathofexile.com/api/public-stash-tabs?id=' + nextChangeId)
+  axios.get('http://www.pathofexile.com/api/public-stash-tabs?id=' + nextChangeId)//http resquest to the games api to get data
     .then(function (response) {
       response.data.stashes.forEach(stash => {//a foreach loop that go though each stash in the api's response
         stash.items.forEach(item => {//a foreach loop that loops though each item in the stash
