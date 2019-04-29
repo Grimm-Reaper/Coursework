@@ -66,7 +66,7 @@ var sqlreq = {//the sqlreq class is defined here
                 if (lifeSpan < TotallifeSpan) {//compare lifeSpan to TotallifeSpan because this function is recursive lifespan increases each time the function is called once it is equal to total lifespan
                     lifeSpan++//increase lifespan
                     //this sql querry get the mean and end currency but only the most recent enty for each end currency where the starting id and league id are equal to those passed in the function
-                    con.query("SELECT endCurrency, mean FROM marketStatistics WHERE statsId IN (SELECT MAX(statsId) FROM marketStatistics WHERE startingCurrency='" + startCurrencyId + "' GROUP BY endCurrency)", function (err, result, ) {
+                    con.query("SELECT endCurrency, mean FROM marketStatistics WHERE statsId IN (SELECT MAX(statsId) FROM marketStatistics WHERE startingCurrency='" + startCurrencyId + "' AND leagueId='" + leagueId + "'GROUP BY endCurrency)", function (err, result, ) {
                         if (err) { res.send(err); } else {
                             if (result[0] != undefined) {//this if check if data was returned as sometimes the result will be blank if there are no trades start with a currency but there are others that trade to it
 
